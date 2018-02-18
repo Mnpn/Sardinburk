@@ -31,7 +31,7 @@ fn inner_main() -> Result<(), Error> {
 
     let mut file = OpenOptions::new()
         .append(true)
-        .create_new(true)
+        .create(true)
         .open("templog.txt")
         .unwrap();
 
