@@ -3,6 +3,8 @@ extern crate clap;
 use clap::{App, Arg};
 use std::io::{Error, Read};
 use std::fs::File;
+use std::fs::OpenOptions; 
+use std::io::prelude::*;
 
 fn main() {
     // If any error would occur in inner_main(), print the error.
@@ -26,6 +28,16 @@ fn inner_main() -> Result<(), Error> {
     // Define variables.
     // Split IP and Port TBD.
     let ip = matches.value_of("ip").unwrap();
+
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create_new(true)
+        .open("templog.txt")
+        .unwrap();
+
+    if let Err(e) = writeln!(file, "{}", ip) {
+        eprintln!("Couldn't write to file: {}", e);
+    }
 
     // Temporary test print.
     println!("{}", ip);
