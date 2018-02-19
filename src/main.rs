@@ -10,7 +10,6 @@ use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
-use serde_json::Error as SerdeError;
 use std::io::Error;
 
 #[derive(Serialize, Deserialize)]
