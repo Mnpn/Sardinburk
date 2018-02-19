@@ -33,8 +33,8 @@ fn inner_main() -> Result<(), Error> {
         // Create a TcpListener.
         // Use port 2037 if port 2580 fails.
         let addrs = [
-            SocketAddr::from(([127, 0, 0, 1], 2580)),
-            SocketAddr::from(([127, 0, 0, 1], 2037)),
+            SocketAddr::from(([0, 0, 0, 0], 2580)),
+            SocketAddr::from(([0, 0, 0, 0], 2037)),
         ];
         let listener = TcpListener::bind(&addrs[..]).unwrap();
 
