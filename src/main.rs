@@ -2,7 +2,7 @@
 extern crate clap;
 use clap::{App, Arg};
 use std::io::{Error};
-use std::fs::OpenOptions;
+use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 
@@ -26,6 +26,13 @@ fn inner_main() -> Result<(), Error> {
         .get_matches();
 
     // Define variables.
+    // Open log file.
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("templog.txt")
+        .unwrap();
+
     if let Some(ip) = matches.value_of("ip") { // If IP argument exists
         // Assume they want to connect to another instance. [Client]
 
@@ -40,27 +47,22 @@ fn inner_main() -> Result<(), Error> {
 
         // Accept connections.
         for stream in listener.incoming() {
-            handle_client(stream?);
+            handle_client(&mut file, stream?);
         }
     }
 
-    let mut file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("templog.txt")
-        .unwrap();
-
-    if let Err(e) = writeln!(file, "{}", ip) {
-        eprintln!("Couldn't write to file: {}", e);
-    }
-
-    // Temporary test print.
-    println!("{}", ip);
     // Everything completed without any fatal issues! Well done, code!
     Ok(())
 }
 
 // Handle incoming TCP connections.
-fn handle_client(stream: TcpStream) {
+fn handle_client(logfile: &mut File, stream: TcpStream) {
     println!("Wow, I got something!");
+    log(logfile, 1, "yas, conect!");
+}
+
+fn log(logfile: &mut File, id: i8, message: &str) {
+    if let Err(e) = writeln!(logfile, "{},{}", id, message) {
+        eprintln!("Couldn't write to file: {}", e);
+    }
 }
