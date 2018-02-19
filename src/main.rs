@@ -34,8 +34,16 @@ fn inner_main() -> Result<(), Error> {
         .unwrap();
 
     if let Some(ip) = matches.value_of("ip") { // If IP argument exists
-        // Assume they want to connect to another instance. [Client]
-
+    // Assume they want to connect to another instance. [Client]
+    let addrs = [
+        SocketAddr::from(([0, 0, 0, 0], 2580)),
+        SocketAddr::from(([0, 0, 0, 0], 2037)),
+    ];
+        if let Ok(stream) = TcpStream::connect(&addrs[..]) {
+            println!("Connected!");
+        } else {
+            println!("Couldn't connect.");
+        }
     } else { // No IP was supplied. Assuming they want to recieve a connection. [Server]
         // Create a TcpListener.
         // Use port 2037 if port 2580 fails.
