@@ -21,20 +21,28 @@ fn inner_main() -> Result<(), Error> {
         .author(crate_authors!())
         .arg(Arg::with_name("ip")
             .help("The IP to connect to.") // Not sure if this is how we're going to do this, just a clap placeholder.
-            .required(true) // Make argument required.
+            .required(false) // Don't make argument required.
             .index(1))
         .get_matches();
 
     // Define variables.
-    // Split IP and Port TBD.
-    let ip = matches.value_of("ip").unwrap();
-    // Create a TcpListener.
-    // Use port 2037 if port 2580 fails.
-    let addrs = [
-        SocketAddr::from(([127, 0, 0, 1], 2580)),
-        SocketAddr::from(([127, 0, 0, 1], 2037)),
-    ];
-    let listener = TcpListener::bind(&addrs[..]).unwrap();
+    if let Some(ip) = matches.value_of("ip") { // If IP argument exists
+        // Assume they want to connect to another instance. [Client]
+
+    } else { // No IP was supplied. Assuming they want to recieve a connection. [Server]
+        // Create a TcpListener.
+        // Use port 2037 if port 2580 fails.
+        let addrs = [
+            SocketAddr::from(([127, 0, 0, 1], 2580)),
+            SocketAddr::from(([127, 0, 0, 1], 2037)),
+        ];
+        let listener = TcpListener::bind(&addrs[..]).unwrap();
+
+        // Accept connections.
+        for stream in listener.incoming() {
+            handle_client(stream?);
+        }
+    }
 
     let mut file = OpenOptions::new()
         .append(true)
@@ -44,11 +52,6 @@ fn inner_main() -> Result<(), Error> {
 
     if let Err(e) = writeln!(file, "{}", ip) {
         eprintln!("Couldn't write to file: {}", e);
-    }
-
-    // Accept connections.
-    for stream in listener.incoming() {
-        handle_client(stream?);
     }
 
     // Temporary test print.
