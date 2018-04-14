@@ -98,7 +98,7 @@ fn inner_main() -> Result<(), Error> {
         // let mut client = acceptor.accept(client).unwrap();
 
         // Accept connections.
-        let mut file = file.try_clone()?;
+        let mut logfile = file.try_clone()?;
         thread::spawn(move || {
             for stream in listener.incoming() {
                 let mut file = match file.try_clone() {
@@ -123,7 +123,7 @@ fn inner_main() -> Result<(), Error> {
             let readline = rl.readline("> ");
         match readline {
             Ok(line) => {
-                rl.add_history_entry(&line);
+                log(&mut logfile, user_id, &line);
                 println!("Line: {}", line);
             },
             Err(ReadlineError::Interrupted) => {
