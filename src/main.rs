@@ -33,15 +33,15 @@ struct Session {
 impl Session {
 	fn handle_client(&self) -> Result<(), Error> {
 		// Handle incoming TCP connections.
-	    let mut file = self.file.try_clone()?;
-        let breader = BufReader::new(self.stream);
-        for line in breader.lines() {
-            let line = line?;
-            println!("{}", line);
-        }
-        println!("User connected with ID (TBD)");
-        log(&mut self.file, self.user_id, "User connected with ID (TBD)");
-        Ok(())
+		let mut file = self.file.try_clone()?;
+		let breader = BufReader::new(self.stream);
+		for line in breader.lines() {
+			let line = line?;
+			println!("{}", line);
+		}
+		println!("User connected with ID (TBD)");
+		log(&mut self.file, self.user_id, "User connected with ID (TBD)");
+		Ok(())
 	}
 }
 
@@ -133,14 +133,21 @@ fn inner_main() -> Result<(), Error> {
 						return;
 					}
 				};
+				let mut stream = match stream {
+					Ok(stream) => stream,
+					Err(err) => {
+						eprintln!("{}", err);
+						return;
+					}
+				};
 				// Create a new thread for every client.
-                let session = Session {
-                    user_id: user_id,
-                    file: logfile,
-                    stream: stream,
-                };
+				let session = Session {
+					user_id: user_id,
+					file: logfile,
+					stream: stream,
+				};
 				thread::spawn(move || {
-					if let Err(err) = stream.and_then(|stream| session.handle_client() ){
+					if let Err(err) = session.handle_client() {
 						eprintln!("{}", err);
 					}
 				});
