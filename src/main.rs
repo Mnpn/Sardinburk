@@ -105,15 +105,23 @@ fn inner_main() -> Result<(), Error> {
 }
 
 // Handle incoming TCP connections.
-fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {
+fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) {
+    if let Err(err) = handle_inner(logfile, user_id, stream) {
+        eprintln!("{}", err);
+    }
+}
+
+fn handle_inner(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error>{
     let mut logfile = logfile.try_clone()?;
-    thread::spawn(move || { // Create a new thread for every client.
+    thread::spawn(move || -> Result<(), Error> { // Create a new thread for every client.
         let breader = BufReader::new(stream);
         for line in breader.lines() {
-            println!("yee.");
+            let line = line?;
+            println!("{}", line);
         }
         println!("Wow, I got something!");
         log(&mut logfile, user_id, "Connection was made!");
+        Ok(())
     });
     Ok(())
 }
