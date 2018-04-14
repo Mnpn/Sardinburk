@@ -4,7 +4,8 @@ extern crate serde_json;
 extern crate serde_derive;
 #[macro_use]
 extern crate clap;
-extern crate sslhash;
+// extern crate sslhash;
+extern crate rustyline;
 
 use clap::{App, Arg};
 use std::fs::{OpenOptions, File};
@@ -14,6 +15,8 @@ use std::io;
 use std::io::{Error, BufReader};
 use std::thread;
 // use sslhash::AcceptorBuilder;
+use rustyline::error::ReadlineError;
+use rustyline::Editor;
 
 #[derive(Serialize, Deserialize)]
 struct Message {
@@ -95,9 +98,12 @@ fn inner_main() -> Result<(), Error> {
         // let mut client = acceptor.accept(client).unwrap();
 
         // Accept connections.
-        for stream in listener.incoming() {
-            handle_client(&mut file, user_id, stream?);
-        }
+        let mut file = file.try_clone()?;
+        thread::spawn(move || {
+            for stream in listener.incoming() {
+                handle_client(&mut file, user_id, stream?);
+            }
+        });
     }
 
     // Everything completed without any fatal issues! Well done, code!
@@ -111,7 +117,7 @@ fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) {
     }
 }
 
-fn handle_inner(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error>{
+fn handle_inner(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {
     let mut logfile = logfile.try_clone()?;
     thread::spawn(move || -> Result<(), Error> { // Create a new thread for every client.
         let breader = BufReader::new(stream);
