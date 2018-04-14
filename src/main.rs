@@ -116,6 +116,29 @@ fn inner_main() -> Result<(), Error> {
                 });
             }
         });
+
+        // Rustyline.
+        let mut rl = Editor::<()>::new();
+        loop {
+            let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(&line);
+                println!("Line: {}", line);
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("Exiting (Ctrl-C)");
+                break
+            },
+            Err(ReadlineError::Eof) => {
+                println!("Exiting (Ctrl-D)");
+                break
+            },
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break
+            }
+        }}
     }
 
     // Everything completed without any fatal issues! Well done, code!
