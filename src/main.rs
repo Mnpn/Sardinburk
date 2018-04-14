@@ -25,6 +25,26 @@ struct Message {
 	message: String,
 }
 
+struct Session {
+	user_id: i8,
+	file: File,
+	stream: TcpStream,
+}
+impl Session {
+	fn handle_client(&self) -> Result<(), Error> {
+		// Handle incoming TCP connections.
+	    let mut file = self.file.try_clone()?;
+        let breader = BufReader::new(self.stream);
+        for line in breader.lines() {
+            let line = line?;
+            println!("{}", line);
+        }
+        println!("User connected with ID (TBD)");
+        log(&mut self.file, self.user_id, "User connected with ID (TBD)");
+        Ok(())
+	}
+}
+
 fn main() {
 	// If any error would occur in inner_main(), print the error.
 	if let Err(err) = inner_main() {
@@ -114,8 +134,13 @@ fn inner_main() -> Result<(), Error> {
 					}
 				};
 				// Create a new thread for every client.
+                let session = Session {
+                    user_id: user_id,
+                    file: logfile,
+                    stream: stream,
+                };
 				thread::spawn(move || {
-					if let Err(err) = stream.and_then(|stream| handle_client(&mut file, user_id, stream)) {
+					if let Err(err) = stream.and_then(|stream| session.handle_client() ){
 						eprintln!("{}", err);
 					}
 				});
@@ -162,18 +187,8 @@ fn redraw(buffer: &[String]) {
 	}
 }
 
-// Handle incoming TCP connections.
-fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {
-	let mut logfile = logfile.try_clone()?;
-	let breader = BufReader::new(stream);
-	for line in breader.lines() {
-		let line = line?;
-		println!("{}", line);
-	}
-	println!("User connected with ID (TBD)");
-	log(&mut logfile, user_id, "User connected with ID (TBD)");
-	Ok(())
-}
+
+// fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {}
 
 // Logging function that logs messages, warnings and errors.
 fn log(logfile: &mut File, id: i8, message: &str) {
