@@ -13,6 +13,7 @@ use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
 use std::io::{Error, BufReader};
+use std::sync::{Arc, Mutex};
 use std::thread;
 // use sslhash::AcceptorBuilder;
 use rustyline::error::ReadlineError;
@@ -50,6 +51,9 @@ fn inner_main() -> Result<(), Error> {
 		.create(true)
 		.open("templog.txt")
 		.unwrap();
+
+	// Create a buffer.
+	let buffer = Arc::new(Mutex::new(Vec::<String>::new()));
 
 	if let Some(ip) = matches.value_of("ip") { // If IP argument exists
 		// Assume they want to connect to another instance. [Client]
@@ -99,6 +103,7 @@ fn inner_main() -> Result<(), Error> {
 
 		// Accept connections.
 		let mut logfile = file.try_clone()?;
+		let buffer2 = Arc::clone(&buffer);
 		thread::spawn(move || {
 			for stream in listener.incoming() {
 				let mut file = match file.try_clone() {
@@ -121,6 +126,10 @@ fn inner_main() -> Result<(), Error> {
 		let mut rl = Editor::<()>::new();
 		loop {
 			let readline = rl.readline("> ");
+
+			let mut buffer = buffer.lock().unwrap();
+			buffer.push();
+			redraw(&buffer);
 		match readline {
 			Ok(line) => {
 				log(&mut logfile, user_id, &line);
@@ -145,6 +154,14 @@ fn inner_main() -> Result<(), Error> {
 	Ok(())
 }
 
+fn redraw(buffer: &[String]) {
+	// Use cool things to clear screen.
+	println!("\x1b[2J");
+	for msg in buffer {
+		println!("{}", msg);
+	}
+}
+
 // Handle incoming TCP connections.
 fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {
 	let mut logfile = logfile.try_clone()?;
@@ -153,8 +170,8 @@ fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(
 		let line = line?;
 		println!("{}", line);
 	}
-	println!("Wow, I got something!");
-	log(&mut logfile, user_id, "Connection was made!");
+	println!("User connected with ID (TBD)");
+	log(&mut logfile, user_id, "User connected with ID (TBD)");
 	Ok(())
 }
 
