@@ -4,13 +4,16 @@ extern crate serde_json;
 extern crate serde_derive;
 #[macro_use]
 extern crate clap;
+extern crate sslhash;
 
 use clap::{App, Arg};
 use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::io;
-use std::io::Error;
+use std::io::{Error, BufReader};
+use std::thread;
+// use sslhash::AcceptorBuilder;
 
 #[derive(Serialize, Deserialize)]
 struct Message {
@@ -86,6 +89,11 @@ fn inner_main() -> Result<(), Error> {
         ];
         let listener = TcpListener::bind(&addrs[..]).unwrap();
 
+        // Create a builder.
+        // let (acceptor, hash) = AcceptorBuilder::default().build().unwrap();
+        // let (client, _) = listener.accept().unwrap();
+        // let mut client = acceptor.accept(client).unwrap();
+
         // Accept connections.
         for stream in listener.incoming() {
             handle_client(&mut file, user_id, stream?);
@@ -97,11 +105,20 @@ fn inner_main() -> Result<(), Error> {
 }
 
 // Handle incoming TCP connections.
-fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) {
-    println!("Wow, I got something!");
-    log(logfile, user_id, "Connection was made!");
+fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {
+    let mut logfile = logfile.try_clone()?;
+    thread::spawn(move || { // Create a new thread for every client.
+        let breader = BufReader::new(stream);
+        for line in breader.lines() {
+            println!("yee.");
+        }
+        println!("Wow, I got something!");
+        log(&mut logfile, user_id, "Connection was made!");
+    });
+    Ok(())
 }
 
+// Logging function that logs messages, warnings and errors.
 fn log(logfile: &mut File, id: i8, message: &str) {
     if let Err(e) = writeln!(logfile, "{},{}", id, message) {
         eprintln!("Couldn't write to file: {}", e);
