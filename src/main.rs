@@ -72,7 +72,7 @@ fn inner_main() -> Result<(), Error> {
     let mut current_user = 0;
 
 	// Open log file.
-	let mut file = OpenOptions::new()
+	let file = OpenOptions::new()
 		.append(true)
 		.create(true)
 		.open("templog.txt")
@@ -81,7 +81,7 @@ fn inner_main() -> Result<(), Error> {
 	// Create a buffer.
 	let buffer = Arc::new(Mutex::new(Vec::<String>::new()));
 
-	if let Some(ip) = matches.value_of("ip") { // If IP argument exists
+	if let Some(_ip) = matches.value_of("ip") { // If IP argument exists
 		// Assume they want to connect to another instance. [Client]
         current_user += 1;
 		let user_id = current_user;
@@ -100,7 +100,7 @@ fn inner_main() -> Result<(), Error> {
 
 		let stdin = io::stdin();
 		for line in stdin.lock().lines() {
-			let line = match line {
+			let _line = match line {
 				Ok(line) => {
 					let message = Message {
 						user_id: user_id.to_owned(),
