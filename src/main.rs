@@ -11,7 +11,6 @@ use clap::{App, Arg};
 use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr};
-use std::io;
 use std::io::{Error, BufReader};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -92,29 +91,36 @@ fn inner_main() -> Result<(), Error> {
 			SocketAddr::from(([0, 0, 0, 0], 2580)),
 			SocketAddr::from(([0, 0, 0, 0], 2037)),
 		];
-			if let Ok(_stream) = TcpStream::connect(&addrs[..]) {
-				println!("Connected!");
-			} else {
-				println!("Couldn't connect.");
-			}
-
-		let stdin = io::stdin();
-		for line in stdin.lock().lines() {
-			let _line = match line {
-				Ok(line) => {
-					let message = Message {
-						user_id: user_id.to_owned(),
-						message: line,
-					};
-					let msg = serde_json::to_string(&message)?;
-					buffer.lock().unwrap().push(msg);
-				},
-				Err(err) => {
-					eprintln!("I/O error: {}", err);
-					continue;
-				},
-			};
+		if let Ok(stream) = TcpStream::connect(&addrs[..]) {
+			println!("Connected!");
+		} else {
+			println!("Couldn't connect.");
 		}
+
+        // Rustyline.
+        let mut logfile = file.try_clone()?;
+        let mut rl = Editor::<()>::new();
+        loop {
+            let readline = rl.readline("> ");
+        match readline {
+            Ok(line) => {
+//                stream.write_all(line);
+                log(&mut logfile, user_id, &line);
+                print(&buffer, line)
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("Exiting (Ctrl-C)");
+                break
+            },
+            Err(ReadlineError::Eof) => {
+                println!("Exiting (Ctrl-D)");
+                break
+            },
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break
+            }
+        }}
 	} else { // No IP was supplied. Assuming they want to recieve a connection. [Host]
 		let user_id = 0; // Host ID is always 0.
 		// Create a TcpListener.
@@ -131,7 +137,8 @@ fn inner_main() -> Result<(), Error> {
 		// let mut client = acceptor.accept(client).unwrap();
 
 		// Accept connections.
-		let mut logfile = file.try_clone()?;
+        let mut logfile = file.try_clone()?;
+		let mut thestream = stream.try_clone()?;
 		let buffer2 = Arc::clone(&buffer);
 		thread::spawn(move || {
 			for stream in listener.incoming() {
@@ -172,6 +179,7 @@ fn inner_main() -> Result<(), Error> {
 			let readline = rl.readline("> ");
 		match readline {
 			Ok(line) => {
+                //stream.write_all(line, buffer);
 				log(&mut logfile, user_id, &line);
 				print(&buffer, line)
 			},
