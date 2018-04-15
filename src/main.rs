@@ -67,6 +67,8 @@ fn inner_main() -> Result<(), Error> {
 		.get_matches();
 
 	// Define variables.
+    let mut current_user = 0;
+
 	// Open log file.
 	let mut file = OpenOptions::new()
 		.append(true)
@@ -79,10 +81,10 @@ fn inner_main() -> Result<(), Error> {
 
 	if let Some(ip) = matches.value_of("ip") { // If IP argument exists
 		// Assume they want to connect to another instance. [Client]
-		let user_id = 1; // Client ID always starts at 1.
+        current_user += 1;
+		let user_id = current_user;
 		// TODO: Make client ID assign the lowest number possible. user_id is an u8.
 		// We can have 255 users (254 direct clients, 1 host client. Starts at 0, host is 0.).
-
 
 		let addrs = [
 			SocketAddr::from(([0, 0, 0, 0], 2580)),
