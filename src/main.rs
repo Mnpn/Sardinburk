@@ -35,9 +35,9 @@ impl Session {
 	fn handle_client(self) -> Result<(), Error> {
 		// Handle incoming TCP connections.
 		let mut logfile = self.file.try_clone()?;
-        // Let users know someone has connected.
-        self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
-        log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
+		// Let users know someone has connected.
+		self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
+		log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
 
 		let breader = BufReader::new(self.stream);
 		for line in breader.lines() {
@@ -68,7 +68,7 @@ fn inner_main() -> Result<(), Error> {
 		.get_matches();
 
 	// Define variables.
-    let mut current_user = 0;
+	let mut current_user = 0;
 
 	// Open log file.
 	let file = OpenOptions::new()
@@ -82,7 +82,7 @@ fn inner_main() -> Result<(), Error> {
 
 	if let Some(_ip) = matches.value_of("ip") { // If IP argument exists
 		// Assume they want to connect to another instance. [Client]
-        current_user += 1;
+		current_user += 1;
 		let user_id = current_user;
 		// TODO: Make client ID assign the lowest number possible. user_id is an u8.
 		// We can have 255 users (254 direct clients, 1 host client. Starts at 0, host is 0.).
@@ -97,30 +97,30 @@ fn inner_main() -> Result<(), Error> {
 			println!("Couldn't connect.");
 		}
 
-        // Rustyline.
-        let mut logfile = file.try_clone()?;
-        let mut rl = Editor::<()>::new();
-        loop {
-            let readline = rl.readline("> ");
-        match readline {
-            Ok(line) => {
-//                stream.write_all(line);
-                log(&mut logfile, user_id, &line);
-                print(&buffer, line)
-            },
-            Err(ReadlineError::Interrupted) => {
-                println!("Exiting (Ctrl-C)");
-                break
-            },
-            Err(ReadlineError::Eof) => {
-                println!("Exiting (Ctrl-D)");
-                break
-            },
-            Err(err) => {
-                println!("Error: {:?}", err);
-                break
-            }
-        }}
+		// Rustyline.
+		let mut logfile = file.try_clone()?;
+		let mut rl = Editor::<()>::new();
+		loop {
+			let readline = rl.readline("> ");
+		match readline {
+			Ok(line) => {
+//				stream.write_all(line);
+				log(&mut logfile, user_id, &line);
+				print(&buffer, line)
+			},
+			Err(ReadlineError::Interrupted) => {
+				println!("Exiting (Ctrl-C)");
+				break
+			},
+			Err(ReadlineError::Eof) => {
+				println!("Exiting (Ctrl-D)");
+				break
+			},
+			Err(err) => {
+				println!("Error: {:?}", err);
+				break
+			}
+		}}
 	} else { // No IP was supplied. Assuming they want to recieve a connection. [Host]
 		let user_id = 0; // Host ID is always 0.
 		// Create a TcpListener.
@@ -137,8 +137,9 @@ fn inner_main() -> Result<(), Error> {
 		// let mut client = acceptor.accept(client).unwrap();
 
 		// Accept connections.
-        let mut logfile = file.try_clone()?;
+		let mut logfile = file.try_clone()?;
 		let mut thestream = stream.try_clone()?;
+		stream.push(stream);
 		let buffer2 = Arc::clone(&buffer);
 		thread::spawn(move || {
 			for stream in listener.incoming() {
@@ -179,7 +180,7 @@ fn inner_main() -> Result<(), Error> {
 			let readline = rl.readline("> ");
 		match readline {
 			Ok(line) => {
-                //stream.write_all(line, buffer);
+				//stream.write_all(line, buffer);
 				log(&mut logfile, user_id, &line);
 				print(&buffer, line)
 			},
