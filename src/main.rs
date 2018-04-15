@@ -138,9 +138,9 @@ fn inner_main() -> Result<(), Error> {
 
 		// Accept connections.
 		let mut logfile = file.try_clone()?;
-		let mut thestream = stream.try_clone()?;
-		stream.push(stream);
 		let buffer2 = Arc::clone(&buffer);
+		let streams = Arc::new(Mutex::new(Vec::new()));
+		let streams_clone = Arc::clone(&streams);
 		thread::spawn(move || {
 			for stream in listener.incoming() {
 				let mut file = match file.try_clone() {
@@ -159,6 +159,13 @@ fn inner_main() -> Result<(), Error> {
 				};
 				// Clone shit.
 				let buffer2 = Arc::clone(&buffer2);
+				match stream.try_clone() {
+					Ok(stream) => streams_clone.lock().unwrap().push(stream),
+					Err(err) => {
+						eprintln!("{}", err);
+						return;
+					}
+				}
 				// Create a new thread for every client.
 				let session = Session {
 					user_id: user_id,
@@ -180,7 +187,9 @@ fn inner_main() -> Result<(), Error> {
 			let readline = rl.readline("> ");
 		match readline {
 			Ok(line) => {
-				//stream.write_all(line, buffer);
+				for stream in &mut *streams.lock().unwrap() {
+					stream.write_all(line.as_bytes());
+				}
 				log(&mut logfile, user_id, &line);
 				print(&buffer, line)
 			},
