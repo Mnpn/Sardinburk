@@ -21,26 +21,28 @@ use rustyline::Editor;
 
 #[derive(Serialize, Deserialize)]
 struct Message {
-	user_id: i8,
+	user_id: u8,
 	message: String,
 }
 
 struct Session {
-	user_id: i8,
+	user_id: u8,
 	file: File,
 	stream: TcpStream,
+	buffer: Arc<Mutex<Vec<String>>>,
 }
+
 impl Session {
-	fn handle_client(&self) -> Result<(), Error> {
+	fn handle_client(self) -> Result<(), Error> {
 		// Handle incoming TCP connections.
-		let mut file = self.file.try_clone()?;
+		let mut logfile = self.file.try_clone()?;
 		let breader = BufReader::new(self.stream);
 		for line in breader.lines() {
 			let line = line?;
-			println!("{}", line);
+			print(&self.buffer, line)
 		}
-		println!("User connected with ID (TBD)");
-		log(&mut self.file, self.user_id, "User connected with ID (TBD)");
+		self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
+		log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
 		Ok(())
 	}
 }
@@ -77,7 +79,11 @@ fn inner_main() -> Result<(), Error> {
 
 	if let Some(ip) = matches.value_of("ip") { // If IP argument exists
 		// Assume they want to connect to another instance. [Client]
-		let user_id = 0; // Client ID is always 0.
+		let user_id = 1; // Client ID always starts at 1.
+		// TODO: Make client ID assign the lowest number possible. user_id is an u8.
+		// We can have 255 users (254 direct clients, 1 host client. Starts at 0, host is 0.).
+
+
 		let addrs = [
 			SocketAddr::from(([0, 0, 0, 0], 2580)),
 			SocketAddr::from(([0, 0, 0, 0], 2037)),
@@ -97,8 +103,7 @@ fn inner_main() -> Result<(), Error> {
 						message: line,
 					};
 					let msg = serde_json::to_string(&message)?;
-
-					println!("{}", msg);
+					buffer.lock().unwrap().push(msg);
 				},
 				Err(err) => {
 					eprintln!("I/O error: {}", err);
@@ -106,8 +111,8 @@ fn inner_main() -> Result<(), Error> {
 				},
 			};
 		}
-	} else { // No IP was supplied. Assuming they want to recieve a connection. [Server]
-		let user_id = 1; // Server ID is always 1.
+	} else { // No IP was supplied. Assuming they want to recieve a connection. [Host]
+		let user_id = 0; // Host ID is always 0.
 		// Create a TcpListener.
 		// Use port 2037 if port 2580 fails.
 		let addrs = [
@@ -140,11 +145,14 @@ fn inner_main() -> Result<(), Error> {
 						return;
 					}
 				};
+				// Clone shit.
+				let buffer2 = Arc::clone(&buffer2);
 				// Create a new thread for every client.
 				let session = Session {
 					user_id: user_id,
-					file: logfile,
+					file: file,
 					stream: stream,
+					buffer: buffer2,
 				};
 				thread::spawn(move || {
 					if let Err(err) = session.handle_client() {
@@ -158,14 +166,10 @@ fn inner_main() -> Result<(), Error> {
 		let mut rl = Editor::<()>::new();
 		loop {
 			let readline = rl.readline("> ");
-
-			let mut buffer = buffer.lock().unwrap();
-			buffer.push();
-			redraw(&buffer);
 		match readline {
 			Ok(line) => {
 				log(&mut logfile, user_id, &line);
-				println!("Line: {}", line);
+				print(&buffer, line)
 			},
 			Err(ReadlineError::Interrupted) => {
 				println!("Exiting (Ctrl-C)");
@@ -192,14 +196,22 @@ fn redraw(buffer: &[String]) {
 	for msg in buffer {
 		println!("{}", msg);
 	}
+	println!("---");
 }
 
 
-// fn handle_client(logfile: &mut File, user_id: i8, stream: TcpStream) -> Result<(), Error> {}
+// fn handle_client(logfile: &mut File, user_id: u8, stream: TcpStream) -> Result<(), Error> {}
 
 // Logging function that logs messages, warnings and errors.
-fn log(logfile: &mut File, id: i8, message: &str) {
+fn log(logfile: &mut File, id: u8, message: &str) {
 	if let Err(e) = writeln!(logfile, "{},{}", id, message) {
 		eprintln!("Couldn't write to file: {}", e);
 	}
+}
+
+fn print(buffer: &Mutex<Vec<String>>, line: String){
+	// Redraw.
+	let mut buffer = buffer.lock().unwrap();
+	buffer.push(line);
+	redraw(&buffer);
 }
