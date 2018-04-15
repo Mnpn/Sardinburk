@@ -36,13 +36,15 @@ impl Session {
 	fn handle_client(self) -> Result<(), Error> {
 		// Handle incoming TCP connections.
 		let mut logfile = self.file.try_clone()?;
+        // Let users know someone has connected.
+        self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
+        log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
+
 		let breader = BufReader::new(self.stream);
 		for line in breader.lines() {
 			let line = line?;
 			print(&self.buffer, line)
 		}
-		self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
-		log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
 		Ok(())
 	}
 }
