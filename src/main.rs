@@ -189,6 +189,7 @@ fn inner_main() -> Result<(), Error> {
 			Ok(line) => {
 				for stream in &mut *streams.lock().unwrap() {
 					stream.write_all(line.as_bytes());
+					stream.write_all(b"\n")?;
 				}
 				log(&mut logfile, user_id, &line);
 				print(&buffer, line)
