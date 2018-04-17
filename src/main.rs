@@ -10,7 +10,7 @@ extern crate rustyline;
 use clap::{App, Arg};
 use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
-use std::net::{TcpListener, TcpStream, SocketAddr};
+use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
 use std::io::{Error, BufReader};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -88,8 +88,8 @@ fn inner_main() -> Result<(), Error> {
 		// We can have 255 users (254 direct clients, 1 host client. Starts at 0, host is 0.).
 
 		let addrs = [
-			SocketAddr::from(([0, 0, 0, 0], 2580)),
-			SocketAddr::from(([0, 0, 0, 0], 2037)),
+			SocketAddr::from((_ip.parse::<IpAddr>()?, 2580)),
+			SocketAddr::from((_ip.parse::<IpAddr>()?, 2037)),
 		];
 		if let Ok(stream) = TcpStream::connect(&addrs[..]) {
 			println!("Connected!");
