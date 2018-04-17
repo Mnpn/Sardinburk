@@ -55,7 +55,7 @@ fn main() {
 	}
 }
 
-fn inner_main() -> Result<(), Error> {
+fn inner_main() -> Result<(), Box<std::error::Error>> {
 	// clap app creation, with macros that read project information from Cargo.toml.
 	let matches = App::new(crate_name!())
 		.version(crate_version!())
@@ -91,11 +91,7 @@ fn inner_main() -> Result<(), Error> {
 			SocketAddr::from((_ip.parse::<IpAddr>()?, 2580)),
 			SocketAddr::from((_ip.parse::<IpAddr>()?, 2037)),
 		];
-		if let Ok(stream) = TcpStream::connect(&addrs[..]) {
-			println!("Connected!");
-		} else {
-			println!("Couldn't connect.");
-		}
+		let stream = TcpStream::connect(&addrs[..])?;
 
 		// Rustyline.
 		let mut logfile = file.try_clone()?;
@@ -188,7 +184,7 @@ fn inner_main() -> Result<(), Error> {
 		match readline {
 			Ok(line) => {
 				for stream in &mut *streams.lock().unwrap() {
-					stream.write_all(line.as_bytes());
+					stream.write_all(line.as_bytes())?;
 					stream.write_all(b"\n")?;
 				}
 				log(&mut logfile, user_id, &line);
