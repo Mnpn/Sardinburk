@@ -7,7 +7,7 @@ extern crate clap;
 // extern crate sslhash;
 extern crate rustyline;
 
-use clap::{App, Arg};
+use clap::Arg;
 use std::fs::{OpenOptions, File};
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
@@ -20,55 +20,70 @@ use rustyline::Editor;
 
 #[derive(Serialize, Deserialize)]
 struct Message {
-	user_id: u8,
+	user_id: u64,
 	message: String,
 }
 
-struct Session {
-	user_id: u8,
+struct ServerSession {
+	user_id: u64,
 	file: File,
 	stream: TcpStream,
 	buffer: Arc<Mutex<Vec<String>>>,
 }
 
-impl Session {
-	fn handle_client(self) -> Result<(), Error> {
+struct ClientSession {
+	user_id: u64,
+	file: File,
+	stream: TcpStream,
+	buffer: Arc<Mutex<Vec<String>>>,
+}
+
+impl ServerSession {
+	fn handle_client(&mut self) -> Result<(), Error> {
 		// Handle incoming TCP connections.
 		let mut logfile = self.file.try_clone()?;
 		// Let users know someone has connected.
 		self.buffer.lock().unwrap().push("User connected with ID ".to_string() + &self.user_id.to_string());
 		log(&mut logfile, self.user_id, &("User connected with ID ".to_string() + &self.user_id.to_string()));
 
-		let breader = BufReader::new(self.stream);
+		let user_id = self.user_id.to_le_bytes();
+		self.stream.write_all(&user_id)?;
+		self.stream.flush()?;
+
+		let breader = BufReader::new(&self.stream);
 		for line in breader.lines() {
 			let line = line?;
 			print(&self.buffer, line)
 		}
 		Ok(())
 	}
-}
 
-fn main() {
-	// If any error would occur in inner_main(), print the error.
-	if let Err(err) = inner_main() {
-		eprintln!("{}", err);
+	fn handle_disconnect(&mut self) -> Result<(), Error> {
+		self.buffer.lock().unwrap().push("User with ID ".to_string() + &self.user_id.to_string() + " disconnected.");
+		log(&mut self.file, self.user_id, &("User with ID ".to_string() + &self.user_id.to_string() + " disconnected."));
+		Ok(())
 	}
 }
 
-fn inner_main() -> Result<(), Box<std::error::Error>> {
+impl ClientSession {
+	fn handle_thonking(&self) -> Result<(), Error> {
+		let batman = BufReader::new(self.stream.try_clone()?);
+		for line in batman.lines() {
+			let line = line?;
+			print(&self.buffer, line)
+		};
+		Ok(())
+	}
+}
+
+fn main() -> Result<(), Box<std::error::Error>> {
 	// clap app creation, with macros that read project information from Cargo.toml.
-	let matches = App::new(crate_name!())
-		.version(crate_version!())
-		.about(crate_description!())
-		.author(crate_authors!())
+	let matches = app_from_crate!()
 		.arg(Arg::with_name("ip")
 			.help("The IP to connect to.") // Not sure if this is how we're going to do this, just a clap placeholder.
 			.required(false) // Don't make argument required.
 			.index(1))
 		.get_matches();
-
-	// Define variables.
-	let mut current_user = 0;
 
 	// Open log file.
 	let file = OpenOptions::new()
@@ -80,43 +95,62 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 	// Create a buffer.
 	let buffer = Arc::new(Mutex::new(Vec::<String>::new()));
 
-	if let Some(_ip) = matches.value_of("ip") { // If IP argument exists
-		// Assume they want to connect to another instance. [Client]
-		current_user += 1;
-		let user_id = current_user;
-		// TODO: Make client ID assign the lowest number possible. user_id is an u8.
-		// We can have 255 users (254 direct clients, 1 host client. Starts at 0, host is 0.).
-
+	if let Some(ip) = matches.value_of("ip") { // If IP argument exists
 		let addrs = [
-			SocketAddr::from((_ip.parse::<IpAddr>()?, 2580)),
-			SocketAddr::from((_ip.parse::<IpAddr>()?, 2037)),
+			SocketAddr::from((ip.parse::<IpAddr>()?, 2580)),
+			SocketAddr::from((ip.parse::<IpAddr>()?, 2037)),
 		];
-		let stream = TcpStream::connect(&addrs[..])?;
+		let mut stream = TcpStream::connect(&addrs[..])?;
+
+		// Before we initiate a session, get the user id
+		let mut bytes = [0; 8];
+		stream.read_exact(&mut bytes)?;
+
+		let user_id = u64::from_le_bytes(bytes);
+
+		redraw(&buffer.lock().unwrap());
+		{
+			let mut stream = stream.try_clone()?;
+			let buffer = Arc::clone(&buffer);
+			thread::spawn(move || {
+				let session = ClientSession {
+					user_id: user_id,
+					file: file,
+					stream: stream,
+					buffer: buffer,
+				};
+				print(&session.buffer, format!("Hello world! You're the user with ID {}.", session.user_id));
+				if let Err(err) = session.handle_thonking() {
+					eprintln!("{}", err);
+				}
+ 			});
+		}
 
 		// Rustyline.
-		let mut logfile = file.try_clone()?;
 		let mut rl = Editor::<()>::new();
 		loop {
 			let readline = rl.readline("> ");
-		match readline {
-			Ok(line) => {
-//				stream.write_all(line);
-				log(&mut logfile, user_id, &line);
-				print(&buffer, line)
-			},
-			Err(ReadlineError::Interrupted) => {
-				println!("Exiting (Ctrl-C)");
-				break
-			},
-			Err(ReadlineError::Eof) => {
-				println!("Exiting (Ctrl-D)");
-				break
-			},
-			Err(err) => {
-				println!("Error: {:?}", err);
-				break
+			match readline {
+				Ok(line) => {
+					stream.write_all(line.trim().as_bytes())?;
+					stream.write_all(b"\n")?;
+					print(&buffer, line)
+				},
+				Err(ReadlineError::Interrupted) => {
+					stream.write_all(b"\0\n")?;
+					println!("Exiting (Ctrl-C)");
+					break
+				},
+				Err(ReadlineError::Eof) => {
+					println!("Exiting (Ctrl-D)");
+					break
+				},
+				Err(err) => {
+					println!("Error: {:?}", err);
+					break
+				}
 			}
-		}}
+		}
 	} else { // No IP was supplied. Assuming they want to recieve a connection. [Host]
 		let user_id = 0; // Host ID is always 0.
 		// Create a TcpListener.
@@ -137,6 +171,14 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 		let buffer2 = Arc::clone(&buffer);
 		let streams = Arc::new(Mutex::new(Vec::new()));
 		let streams_clone = Arc::clone(&streams);
+
+		// TODO: Make client ID assign the lowest number possible. user_id is an u64.
+		// Now featuring u64!! This allows us to have an almost infinite amount of clients,
+		// which is also handy because we don't really want to reuse an ID.
+		let mut current_user: u64 = 0;
+
+		redraw(&buffer.lock().unwrap());
+
 		thread::spawn(move || {
 			for stream in listener.incoming() {
 				let mut file = match file.try_clone() {
@@ -162,8 +204,10 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 						return;
 					}
 				}
+				current_user += 1;
+				let user_id = current_user;
 				// Create a new thread for every client.
-				let session = Session {
+				let mut session = ServerSession {
 					user_id: user_id,
 					file: file,
 					stream: stream,
@@ -171,7 +215,10 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 				};
 				thread::spawn(move || {
 					if let Err(err) = session.handle_client() {
-						eprintln!("{}", err);
+						eprintln!("client error: {}", err);
+						if let Err(err) = session.handle_disconnect() {
+							eprintln!("disconnect error: {}", err);
+						}
 					}
 				});
 			}
@@ -181,28 +228,29 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 		let mut rl = Editor::<()>::new();
 		loop {
 			let readline = rl.readline("> ");
-		match readline {
-			Ok(line) => {
-				for stream in &mut *streams.lock().unwrap() {
-					stream.write_all(line.as_bytes())?;
-					stream.write_all(b"\n")?;
+			match readline {
+				Ok(line) => {
+					for stream in &mut *streams.lock().unwrap() {
+						stream.write_all(line.as_bytes())?;
+						stream.write_all(b"\n")?;
+					}
+					log(&mut logfile, user_id, &line);
+					print(&buffer, line)
+				},
+				Err(ReadlineError::Interrupted) => {
+					println!("Exiting (Ctrl-C)");
+					break
+				},
+				Err(ReadlineError::Eof) => {
+					println!("Exiting (Ctrl-D)");
+					break
+				},
+				Err(err) => {
+					println!("Error: {:?}", err);
+					break
 				}
-				log(&mut logfile, user_id, &line);
-				print(&buffer, line)
-			},
-			Err(ReadlineError::Interrupted) => {
-				println!("Exiting (Ctrl-C)");
-				break
-			},
-			Err(ReadlineError::Eof) => {
-				println!("Exiting (Ctrl-D)");
-				break
-			},
-			Err(err) => {
-				println!("Error: {:?}", err);
-				break
 			}
-		}}
+		}
 	}
 
 	// Everything completed without any fatal issues! Well done, code!
@@ -211,18 +259,18 @@ fn inner_main() -> Result<(), Box<std::error::Error>> {
 
 fn redraw(buffer: &[String]) {
 	// Use cool things to clear screen.
-	println!("\x1b[2J");
+	println!("\x1b[2J\x1b[H");
 	for msg in buffer {
 		println!("{}", msg);
 	}
-	println!("---");
+	println!("--- Message: ---");
 }
 
 
-// fn handle_client(logfile: &mut File, user_id: u8, stream: TcpStream) -> Result<(), Error> {}
+// fn handle_client(logfile: &mut File, user_id: u64, stream: TcpStream) -> Result<(), Error> {}
 
 // Logging function that logs messages, warnings and errors.
-fn log(logfile: &mut File, id: u8, message: &str) {
+fn log(logfile: &mut File, id: u64, message: &str) {
 	if let Err(e) = writeln!(logfile, "{},{}", id, message) {
 		eprintln!("Couldn't write to file: {}", e);
 	}
