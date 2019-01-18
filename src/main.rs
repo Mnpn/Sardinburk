@@ -172,7 +172,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
 		let streams = Arc::new(Mutex::new(Vec::new()));
 		let streams_clone = Arc::clone(&streams);
 
-		// TODO: Make client ID assign the lowest number possible. user_id is an u64.
 		// Now featuring u64!! This allows us to have an almost infinite amount of clients,
 		// which is also handy because we don't really want to reuse an ID.
 		let mut current_user: u64 = 0;
