@@ -1,7 +1,11 @@
 # Sardinburk [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=flat-square)](https://paypal.me/mnpn03/)
 
 Sardinburk is a direct chat application between two devices. Sardinburk is made in [Rust](https://www.rust-lang.org/).
-Sardinburk stores chat logs on both connected devices, and will alert if there are any conflicts in log files.
+Sardinburk allows for users to have a nickname and communicate both locally and world-wide.
+See the usage section below.
+
+Disclaimer: Sardinburk is not meant to be reliable. It's meant to be simple!
+If you're looking for any kind of security, reliability, or really anything, I'll link a better program here when it's available!
 
 ### Table of Content
 - [Installation](#installation)
@@ -21,8 +25,13 @@ Then you simply build it by running `cargo build --release`.
 ### Usage
 ```
 $ sardinburk --help
+=> sardinburk...
+$ sardinburk 127.0.0.1 --name John
+=> Hello world, John! You're the user with ID 2...
+$ sardinburk --name Martin
+=> Hello world, Martin! Others can join you by providing...
 ```
-[TBD]
+Supply an IP to connect to it, otherwise you're the host!
 ### Contribution
 To contribute to the project, simply create a [Pull Request](https://github.com/Mnpn03/Sardinburk/pulls) or an [Issue](https://github.com/Mnpn03/Sardinburk/issues).
 
