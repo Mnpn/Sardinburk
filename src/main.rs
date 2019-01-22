@@ -262,7 +262,10 @@ fn main() -> Result<(), Error> {
 
 fn redraw(buffer: &[String]) {
 	// Use cool things to clear screen.
-	println!("\x1b[2J\x1b[H");
+	if cfg!(target_os = "windows") { // The special snowflake...
+		println!("It looks like you're on Windows. Use mingw64/Git Bash, Windows Subsystem for Linux or msys2 to run this program properly. (Or anything that's not cmd or PowerShell, basically.)");
+	}
+	println!("\x1b[2J\x1b[H"); // Of course Windows doesn't support this..
 	for msg in buffer {
 		println!("{}", msg);
 	}
