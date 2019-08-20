@@ -1,4 +1,4 @@
-# Sardinburk [![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg?style=flat-square)](https://paypal.me/mnpn03/)
+# Sardinburk
 
 Sardinburk is a direct chat application between several devices. Sardinburk is made in [Rust](https://www.rust-lang.org/).
 Sardinburk allows for users to have a nickname and communicate both locally and world-wide.
