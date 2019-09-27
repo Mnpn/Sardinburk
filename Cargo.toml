@@ -1,5 +1,5 @@
 [package]
-authors = ["Martin Persson <mnpn03@gmail.com>", "jD91mZM2 <me@krake.one>"]
+authors = ["Martin Persson <mnpn03@icloud.com>", "jD91mZM2 <me@krake.one>"]
 name = "sardinburk"
 version = "0.2.0"
 [dependencies]
